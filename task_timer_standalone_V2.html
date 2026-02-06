@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Task Timer</title>
+  <style>
+    :root{ --bg:#0b1020; --panel:#121a33; --accent:#7dd3fc; --accent-2:#a78bfa; --text:#e5e7eb; --muted:#a1a1aa; --danger:#fca5a5; --ok:#86efac; }
+    [data-theme="light"]{ --bg:#f8fafc; --panel:#ffffff; --accent:#0ea5e9; --accent-2:#8b5cf6; --text:#1e293b; --muted:#64748b; --danger:#f87171; --ok:#4ade80; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; color:var(--text); background:var(--bg); transition:background 0.3s ease, color 0.3s ease; }
+    body:not([data-theme="light"]){ background:radial-gradient(1200px 800px at 100% -10%,#17203f 0%,#0b1020 50%); }
+    [data-theme="light"] body{ background:radial-gradient(1200px 800px at 100% -10%,#e0f2fe 0%,#f8fafc 50%); }
+    .container{max-width:1100px; margin:32px auto; padding:16px}
+    .app{ background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:20px; backdrop-filter: blur(6px); box-shadow:0 10px 30px rgba(0,0,0,0.35); }
+    h1{margin:0 0 6px 0; font-weight:800; letter-spacing:0.3px}
+    .sub{color:var(--muted); margin-bottom:18px}
+    .grid{display:grid; grid-template-columns: 1.3fr 1fr; gap:18px}
+    @media (max-width: 1100px){ .grid{grid-template-columns:1fr} }
+
+    .panel{background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px}
+    .row{display:flex; align-items:center; gap:12px}
+
+    .bigtime{font-variant-numeric:tabular-nums; font-weight:800; font-size:44px; letter-spacing:1px}
+    .label{color:var(--muted); font-size:12px; letter-spacing:0.5px; text-transform:uppercase}
+    [data-theme="light"] .label{color:#475569;}
+
+    .stack{display:grid; gap:10px}
+
+    .btnbar{display:flex; flex-wrap:wrap; gap:10px}
+    button{ appearance:none; border:none; cursor:pointer; padding:10px 14px; border-radius:12px; font-weight:700; color:#0b1020; background:linear-gradient(180deg,#e5e7eb,#d1d5db); box-shadow:0 4px 16px rgba(0,0,0,0.15); transition:transform .06s ease, box-shadow .2s ease, filter .2s ease; }
+    button:hover{transform:translateY(-1px)}
+    button:disabled{filter:saturate(0.2) brightness(0.8); cursor:not-allowed; transform:none}
+    .secondary{background:linear-gradient(180deg,#d4d4d8,#a1a1aa); box-shadow:none}
+    .ghost{background:transparent; color:var(--text); border:1px solid rgba(255,255,255,0.14)}
+    .danger{background:linear-gradient(180deg,#fecaca,#fda4af);} .ok{background:linear-gradient(180deg,#bbf7d0,#86efac)}
+    
+    #startBtn{background:linear-gradient(180deg,#d9f99d,#bef264); box-shadow:0 4px 16px rgba(132,204,22,0.25)}
+    #logBtn{background:linear-gradient(180deg,#bfdbfe,#93c5fd); box-shadow:0 4px 16px rgba(59,130,246,0.25)}
+    #undoBtn{background:linear-gradient(180deg,#fed7aa,#fdba74); box-shadow:0 4px 16px rgba(251,146,60,0.25)}
+    #pauseBtn{background:linear-gradient(180deg,#fecaca,#fca5a5); box-shadow:0 4px 16px rgba(239,68,68,0.25)}
+    #resetBtn{background:linear-gradient(180deg,#fecaca,#fca5a5); box-shadow:0 4px 16px rgba(239,68,68,0.25); color:#0b1020}
+    #exportUserBtn{background:#528552; box-shadow:0 4px 16px rgba(0,128,0,0.25); color:#000000}
+    #exportSessionBtn{background:#528552; box-shadow:0 4px 16px rgba(0,128,0,0.25); color:#000000}
+
+    table{width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:12px;}
+    thead th{position:sticky; top:0; background:#0f1630; color:#cbd5e1; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:0.6px}
+    [data-theme="light"] thead th{background:#e0f2fe; color:#0f172a;}
+    th, td{padding:10px 12px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.06); font-variant-numeric:tabular-nums}
+    tbody tr:hover{background:rgba(255,255,255,0.03)}
+
+    .stats{display:grid; grid-template-columns: repeat(3,1fr); gap:12px}
+    .card{background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px}
+
+    .kbd{display:inline-block; padding:4px 8px; border:1px solid rgba(255,255,255,0.3); border-bottom-width:2px; border-radius:6px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; font-weight:600; background:rgba(0,0,0,0.1)}
+    [data-theme="light"] .kbd{border-color:rgba(0,0,0,0.25); background:#e0f2fe; color:#0ea5e9}
+    .muted{color:var(--muted)}
+    .footer{margin-top:10px; font-size:12px; color:var(--muted)}
+    .theme-toggle{cursor:pointer; padding:4px 10px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:transparent; color:var(--text); font-size:11px; transition:all 0.2s ease;}
+    .theme-toggle:hover{background:rgba(255,255,255,0.1)}
+    [data-theme="light"] .theme-toggle{border-color:rgba(0,0,0,0.2)}
+    [data-theme="light"] .theme-toggle:hover{background:rgba(0,0,0,0.05)}
+    .nowrap{white-space:nowrap}
+
+    .namebar{display:flex; gap:10px; align-items:center; margin:10px 0 6px}
+    .namebar input{ flex:1; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.12); background:#0f1530; color:var(--text); }
+    [data-theme="light"] .namebar input{ background:#ffffff; border-color:rgba(0,0,0,0.12); }
+
+    .landing-overlay{position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:9999}
+    .landing-overlay.hidden{display:none}
+    .landing-modal{background:var(--panel); border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:40px; max-width:420px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+    .landing-modal h2{margin:0 0 10px 0; font-size:28px; font-weight:800; letter-spacing:0.3px}
+    .landing-modal .sub{margin:0 0 28px 0}
+    .landing-form{display:flex; flex-direction:column; gap:20px}
+    .landing-form input{padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); color:var(--text); font-size:14px; transition:all 0.2s ease}
+    .landing-form input:focus{outline:none; border-color:var(--accent); background:rgba(255,255,255,0.1)}
+    [data-theme="light"] .landing-form input{background:#f1f5f9; border-color:rgba(0,0,0,0.12)}
+    [data-theme="light"] .landing-form input:focus{background:#e0f2fe; border-color:#0ea5e9}
+    .theme-selector{display:flex; gap:12px; justify-content:center; margin-bottom:8px}
+    .theme-btn{padding:10px 20px; border-radius:10px; border:2px solid; font-weight:700; cursor:pointer; transition:all 0.2s ease}
+    .theme-btn[data-theme="light"]{border-color:#0ea5e9; background:#ffffff; color:#1e293b}
+    .theme-btn[data-theme="light"]:hover{background:#e0f2fe}
+    .theme-btn[data-theme="light"].active{background:#0ea5e9; color:#ffffff; border-color:#0ea5e9}
+    .theme-btn[data-theme="dark"]{border-color:#7dd3fc; background:#0f1530; color:#e5e7eb}
+    .theme-btn[data-theme="dark"]:hover{background:#121a33}
+    .theme-btn[data-theme="dark"].active{background:#7dd3fc; color:#0b1020; border-color:#7dd3fc}
+    .landing-modal button[type="submit"]{width:100%; padding:12px 14px; border-radius:12px; border:none; cursor:pointer; font-weight:700; background:linear-gradient(180deg,var(--accent),var(--accent-2)); color:#0b1020; transition:transform .06s ease, box-shadow .2s ease}
+    .landing-modal button[type="submit"]:hover{transform:translateY(-1px)}
+    .landing-modal button[type="submit"]:disabled{filter:saturate(0.2) brightness(0.8); cursor:not-allowed; transform:none}    
+    .help-overlay{ position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:9998; }
+    .help-overlay.hidden{ display:none }
+    .help-modal{ background:var(--panel); border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:40px; max-width:700px; max-height:85vh; overflow-y:auto; text-align:left; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+    .help-modal h2{ margin:0 0 20px 0; font-size:28px; font-weight:800; letter-spacing:0.3px; }
+    .help-modal h3{ margin:20px 0 12px 0; font-size:18px; font-weight:700; color:var(--accent); }
+    .help-modal p{ margin:0 0 12px 0; line-height:1.6; color:var(--text); }
+    .help-modal ul{ margin:0 0 12px 0; padding-left:20px; line-height:1.8; }
+    .help-modal li{ margin:8px 0; }
+    .help-modal .button-group{ margin:16px 0; padding:12px; background:rgba(255,255,255,0.05); border-left:3px solid var(--accent); border-radius:8px; }
+    .help-modal .button-name{ font-weight:700; color:var(--accent); display:inline-block; min-width:120px; }
+    .help-modal code{ background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; font-family:monospace; font-size:12px; }
+    .help-modal .close-help{ width:100%; margin-top:20px; padding:12px 14px; }
+    .help-btn-icon{ font-size:16px; margin-right:4px; }  </style>
+</head>
+<body>
+  <!-- Help Modal -->
+  <div id="helpOverlay" class="help-overlay hidden">
+    <div class="help-modal">
+      <h2>📖 Help & Instructions</h2>
+      
+      <h3>Getting Started</h3>
+      <p>Task Timer helps you track how long different tasks take. Start a session, log individual tasks as you complete them, and export your data for analysis.</p>
+      
+      <h3>Main Controls</h3>
+      
+      <div class="button-group">
+        <div><span class="button-name">Start</span> (Keyboard: <code>S</code>)</div>
+        <p>Begin a new timing session. This resets all data and starts the timer. You can then log individual task durations as you work.</p>
+      </div>
+      
+      <div class="button-group">
+        <div><span class="button-name">Log</span> (Keyboard: <code>L</code>)</div>
+        <p>Record the current task duration and start timing the next task. The completed time is logged with your local timestamp. Available only when a session is running.</p>
+      </div>
+      
+      <div class="button-group">
+        <div><span class="button-name">Undo</span> (Keyboard: <code>U</code>)</div>
+        <p>Remove the last logged task and resume timing where you left off. Useful if you logged a task by mistake. Only available during an active session.</p>
+      </div>
+      
+      <div class="button-group">
+        <div><span class="button-name">Pause/Resume</span> (Keyboard: <code>P</code>)</div>
+        <p>Pause the current timer without losing progress. The pause time is not included in task durations. Click again to resume timing.</p>
+      </div>
+      
+      <div class="button-group">
+        <div><span class="button-name">Stop</span> (Keyboard: <code>T</code>)</div>
+        <p>End the current session without clearing data. Your logged tasks remain visible and can be exported. You'll need to Start a new session to continue timing.</p>
+      </div>
+      
+      <div class="button-group">
+        <div><span class="button-name">Reset</span></div>
+        <p>Clear all timing data and return to the idle state. This action cannot be undone, but you can still export your data before resetting.</p>
+      </div>
+      
+      <h3>Export & Data Management</h3>
+      
+      <div class="button-group">
+        <div><span class="button-name">Export Item Details</span></div>
+        <p>Download a detailed CSV file with every logged task, including duration in multiple formats and completion timestamp. Great for detailed analysis.</p>
+      </div>
+      
+      <div class="button-group">
+        <div><span class="button-name">Export Session Details</span></div>
+        <p>Download a summary CSV file with session totals: total rows logged, total time, and average time per task.</p>
+      </div>
+      
+      <h3>Display Information</h3>
+      <ul>
+        <li><strong>Status:</strong> Shows current state (Idle, Running, Paused, or Stopped)</li>
+        <li><strong>Current Row:</strong> Time elapsed for the task currently being timed</li>
+        <li><strong>Session Total:</strong> Total time elapsed in current session (including pause time)</li>
+        <li><strong>Rows Logged:</strong> Number of tasks completed in the session</li>
+        <li><strong>Average / Row:</strong> Average duration per logged task</li>
+        <li><strong>Total (Logged):</strong> Total duration of all logged tasks</li>
+      </ul>
+      
+      <h3>Keyboard Shortcuts</h3>
+      <ul>
+        <li><code>S</code> - Start a new session</li>
+        <li><code>L</code> - Log current task</li>
+        <li><code>P</code> - Pause/Resume timing</li>
+        <li><code>T</code> - Stop session</li>
+        <li><code>U</code> - Undo last log</li>
+      </ul>
+      
+      <h3>Settings</h3>
+      <p><strong>Theme Toggle:</strong> Switch between light and dark mode for comfortable viewing in different lighting conditions.</p>
+      <p><strong>Reset Settings:</strong> Clear your name and return to the welcome screen. Your logged data remains unchanged.</p>
+      
+      <h3>Tips</h3>
+      <ul>
+        <li>Pause the timer if you need to step away from a task to avoid inflating task times</li>
+        <li>Log tasks immediately after completing them for accurate tracking</li>
+        <li>Use Export Item Details for comprehensive analysis and Export Session Details for quick summaries</li>
+        <li>Your name and theme preference are saved automatically</li>
+      </ul>
+      
+      <button class="close-help" onclick="closeHelp()">Close Help</button>
+    </div>
+  </div>
+
+  <!-- Landing Page Modal -->
+  <div id="landingOverlay" class="landing-overlay">
+    <div class="landing-modal">
+      <h2>Welcome to Task Timer</h2>
+      <div class="sub">Get started by entering your name and selecting a theme</div>
+      <form id="landingForm" class="landing-form">
+        <input type="text" id="landingNameInput" placeholder="Your name" required aria-label="Enter your name" />
+        <div>
+          <div class="theme-selector">
+            <button type="button" class="theme-btn active" data-theme="light">☀️ Light</button>
+            <button type="button" class="theme-btn" data-theme="dark">🌙 Dark</button>
+          </div>
+        </div>
+        <button type="submit">Continue</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="app">
+      <h1>Task Timer</h1>
+      <div class="sub">Use <span class="kbd">S</span> Start, <span class="kbd">L</span> Log, <span class="kbd">P</span> Pause/Resume, <span class="kbd">T</span> Stop, <span class="kbd">U</span> Undo.</div>
+
+      <div class="namebar">
+        <label class="label" style="min-width:56px" for="userName">User</label>
+        <input id="userName" type="text" placeholder="Your name" aria-label="User name">
+      </div>
+
+      <div class="grid">
+        <!-- Left: Controls & Live Timers -->
+        <section class="panel stack">
+          <div class="btnbar">
+            <button id="startBtn" title="Start timing (S)" aria-label="Start timing">Start</button>
+            <button id="logBtn" class="ok" title="Log current row (L)" aria-label="Log current row" disabled="">Log</button>
+            <button id="undoBtn" class="secondary" title="Undo last log (U)" aria-label="Undo last logged row" disabled="">Undo</button>
+            <button id="pauseBtn" class="secondary" title="Pause/Resume (P)" aria-label="Pause or resume timing" disabled="">Pause</button>
+          </div>
+
+          <div class="btnbar">
+            <button id="stopBtn" class="danger" title="Stop session (T)" aria-label="Stop session" disabled="">Stop</button>
+            <button id="resetBtn" class="ghost" title="Clear all data" aria-label="Reset all data">Reset</button>
+          </div>
+
+          <div class="btnbar">
+            <button id="exportUserBtn" class="ghost" title="Export Item Details" aria-label="Export item details as CSV">Export Item Details</button>
+            <button id="exportSessionBtn" class="ghost" title="Export Session Details" aria-label="Export session details as CSV">Export Session Details</button>
+          </div>
+
+          <div class="card">
+            <div class="label">Status</div>
+            <div id="statusText">Idle</div>
+          </div>
+
+          <div class="row" style="justify-content:space-between; gap:16px">
+            <div>
+              <div class="label">Current Row</div>
+              <div id="currentDisplay" class="bigtime">00:00.0</div>
+            </div>
+            <div>
+              <div class="label">Session Total</div>
+              <div id="sessionDisplay" class="bigtime">00:00.0</div>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="card">
+              <div class="label">Rows Logged</div>
+              <div id="rowsCount" class="bigtime" style="font-size:28px">0</div>
+            </div>
+            <div class="card">
+              <div class="label">Average / Row</div>
+              <div id="avgDisplay" class="bigtime" style="font-size:28px">00:00.0</div>
+            </div>
+            <div class="card">
+              <div class="label">Total (Logged)</div>
+              <div id="totalDisplay" class="bigtime" style="font-size:28px">00:00.0</div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Right: Log Table -->
+        <section class="panel">
+          <div class="row" style="justify-content:space-between; align-items:baseline">
+            <div class="label">Rows</div>
+          </div>
+          <div id="tableWrap" style="max-height:420px; overflow:auto; margin-top:10px; border-radius:12px">
+            <table id="logTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Row Duration</th>
+                  <th>Duration (s)</th>
+                  <th>Completed At</th>
+                </tr>
+              </thead>
+              <tbody id="logBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <div class="footer" style="text-align:center; margin-top:12px; font-size:11px; display:flex; justify-content:space-between; align-items:center">
+        <span>Completion timestamps use your local time</span>
+        <span>Created by: Philip Combs</span>
+        <div style="display:flex; gap:8px">
+          <button id="helpBtn" class="theme-toggle" aria-label="Open help">❓ Help</button>
+          <button id="resetSettingsBtn" class="theme-toggle" aria-label="Reset and return to landing page">⚙️ Reset</button>
+          <button id="themeToggle" class="theme-toggle" aria-label="Toggle light/dark mode">🌙 Dark</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== Help Modal Logic =====
+    const helpOverlay = document.getElementById('helpOverlay');
+    const helpBtn = document.getElementById('helpBtn');
+    let helpModalOpenedWhileRunning = false;
+    
+    function openHelp(){
+      helpOverlay.classList.remove('hidden');
+      // Pause if currently running
+      if(state === State.RUNNING){
+        helpModalOpenedWhileRunning = true;
+        pauseResume();
+      }
+    }
+    
+    function closeHelp(){
+      helpOverlay.classList.add('hidden');
+      // Reset flag but don't auto-resume - user must click Resume button
+      helpModalOpenedWhileRunning = false;
+    }
+    
+    helpBtn.addEventListener('click', openHelp);
+    helpOverlay.addEventListener('click', (e)=>{
+      if(e.target === helpOverlay) closeHelp();
+    });
+
+    // ===== Landing Page Logic =====
+    const landingOverlay = document.getElementById('landingOverlay');
+    const landingForm = document.getElementById('landingForm');
+    const landingNameInput = document.getElementById('landingNameInput');
+    const resetSettingsBtn = document.getElementById('resetSettingsBtn');
+    let selectedLandingTheme = 'light';
+
+    function showLanding(){
+      landingOverlay.classList.remove('hidden');
+      landingNameInput.focus();
+      const currentTheme = localStorage.getItem('taskTimerTheme') || 'light';
+      document.querySelectorAll('.theme-btn').forEach(btn=>{
+        btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+      });
+      selectedLandingTheme = currentTheme;
+    }
+
+    function hideLanding(){
+      landingOverlay.classList.add('hidden');
+    }
+
+    document.querySelectorAll('.theme-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const theme = btn.dataset.theme;
+        selectedLandingTheme = theme;
+        document.querySelectorAll('.theme-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        setLandingTheme(theme);
+      });
+    });
+
+    function setLandingTheme(theme){
+      if(theme === 'light'){
+        document.documentElement.setAttribute('data-theme', 'light');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+      }
+    }
+
+    landingForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const name = landingNameInput.value.trim();
+      if(name){
+        const userNameInput = document.getElementById('userName');
+        localStorage.setItem('taskTimerUserName', name);
+        localStorage.setItem('taskTimerTheme', selectedLandingTheme);
+        userNameInput.value = name;
+        setTheme(selectedLandingTheme);
+        hideLanding();
+      }
+    });
+
+    resetSettingsBtn.addEventListener('click', ()=>{
+      if(confirm('Clear your name and return to the welcome screen?')){
+        localStorage.removeItem('taskTimerUserName');
+        const userNameInput = document.getElementById('userName');
+        userNameInput.value = '';
+        resetAll();
+        showLanding();
+      }
+    });
+
+    const savedName = localStorage.getItem('taskTimerUserName');
+    if(!savedName){
+      showLanding();
+    } else {
+      const userNameInput = document.getElementById('userName');
+      userNameInput.value = savedName;
+      hideLanding();
+    }
+
+    // ===== Utility =====
+    function formatDuration(ms){
+      if(ms < 0) ms = 0;
+      const totalSeconds = Math.floor(ms/1000);
+      const minutes = Math.floor(totalSeconds/60);
+      const seconds = totalSeconds % 60;
+      const tenths = Math.floor((ms % 1000)/100);
+      const mm = String(minutes).padStart(2,'0');
+      const ss = String(seconds).padStart(2,'0');
+      return `${mm}:${ss}.${tenths}`;
+    }
+    function formatHMS(ms){
+      let t = Math.round(ms/1000);
+      const h = Math.floor(t/3600); t%=3600; const m=Math.floor(t/60); const s=t%60;
+      const hh = String(h).padStart(2,'0');
+      const mm = String(m).padStart(2,'0');
+      const ss = String(s).padStart(2,'0');
+      return `${hh}:${mm}:${ss}`;
+    }
+    function safeFilePart(s){
+      return (s||'user').toString().trim().replace(/\s+/g,'_').replace(/[^\w\-]+/g,'').slice(0,40) || 'user';
+    }
+    function csvSafe(value){
+      const str = (value ?? '').toString();
+      return (/^[=+\-@]/.test(str)) ? `'${str}` : str;
+    }
+
+    // ===== Elements =====
+    const startBtn = document.getElementById('startBtn');
+    const logBtn = document.getElementById('logBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const exportUserBtn = document.getElementById('exportUserBtn');
+    const exportSessionBtn = document.getElementById('exportSessionBtn');
+
+    const statusText = document.getElementById('statusText');
+    const currentDisplay = document.getElementById('currentDisplay');
+    const sessionDisplay = document.getElementById('sessionDisplay');
+    const avgDisplay = document.getElementById('avgDisplay');
+    const totalDisplay = document.getElementById('totalDisplay');
+    const rowsCount = document.getElementById('rowsCount');
+
+    const logBody = document.getElementById('logBody');
+    const tableWrap = document.getElementById('tableWrap');
+    const userNameInput = document.getElementById('userName');
+    const themeToggle = document.getElementById('themeToggle');
+
+    // ===== State =====
+    const State = { IDLE:'idle', RUNNING:'running', PAUSED:'paused', STOPPED:'stopped' };
+    let state = State.IDLE;
+
+    let sessionStart = 0;       // performance.now() at session start
+    let currentLapStart = 0;    // performance.now() when current row started/resumed
+    let pausedAt = 0;           // performance.now() when pause started
+    let pausedAccumLap = 0;     // total paused ms within current lap
+    let pausedAccumSession = 0; // total paused ms within session (for session timer)
+
+    let rafId = null;
+
+    const rows = []; // {index, ms, completedAt}
+    let liveRowEl = null;
+
+    const undoStack = []; // multi-level undo history
+    function updateUndoButton(){
+      undoBtn.disabled = !(undoStack.length > 0 && (state === State.RUNNING || state === State.PAUSED));
+    }
+
+    // Persist user name locally
+    userNameInput.addEventListener('input', ()=>{
+      localStorage.setItem('taskTimerUserName', userNameInput.value || '');
+    });
+
+    // Theme toggle functionality
+    const savedTheme = localStorage.getItem('taskTimerTheme') || 'dark';
+    function setTheme(theme){
+      if(theme === 'light'){
+        document.documentElement.setAttribute('data-theme', 'light');
+        const themeToggle = document.getElementById('themeToggle');
+        if(themeToggle) themeToggle.textContent = '☀️ Light';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        const themeToggle = document.getElementById('themeToggle');
+        if(themeToggle) themeToggle.textContent = '🌙 Dark';
+      }
+      localStorage.setItem('taskTimerTheme', theme);
+    }
+    setTheme(savedTheme);
+    themeToggle.addEventListener('click', ()=>{
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      setTheme(currentTheme === 'light' ? 'dark' : 'light');
+    });
+
+    function setState(newState){
+      state = newState;
+      // Buttons enable/disable
+      startBtn.disabled = !(state === State.IDLE || state === State.STOPPED);
+      logBtn.disabled = !(state === State.RUNNING);
+      pauseBtn.disabled = !(state === State.RUNNING || state === State.PAUSED);
+      stopBtn.disabled = !(state === State.RUNNING || state === State.PAUSED);
+      pauseBtn.textContent = (state === State.PAUSED) ? 'Resume' : 'Pause';
+
+      // Status text
+      const pretty = {idle:'Idle', running:'Running', paused:'Paused', stopped:'Stopped'};
+      statusText.textContent = pretty[state];
+
+      // Live row presence
+      ensureLiveRow();
+
+      // Update undo button state
+      updateUndoButton();
+    }
+
+    function startSession(){
+      rows.length = 0; updateStats(); renderRows();
+      undoStack.length = 0;
+      sessionStart = performance.now();
+      currentLapStart = sessionStart;
+      pausedAccumLap = 0; pausedAccumSession = 0; pausedAt = 0;
+      loopOn();
+      setState(State.RUNNING);
+    }
+
+    function logRow(){
+      const now = performance.now();
+      const lapMs = now - currentLapStart - pausedAccumLap;
+      const completedAt = new Date().toLocaleString();
+      const row = {index: rows.length + 1, ms: lapMs, completedAt};
+      rows.push(row);
+      undoStack.push(row);
+      renderRows();
+      updateStats();
+      updateUndoButton();
+      // start next lap
+      currentLapStart = now; pausedAccumLap = 0; pausedAt = 0;
+      // After logging, keep view pinned to bottom
+      scrollToBottom();
+    }
+
+    function undoLog(){
+      if(undoStack.length === 0) return;
+      undoStack.pop();
+      rows.pop();
+      // Reset lap timing
+      currentLapStart = performance.now();
+      pausedAccumLap = 0;
+      pausedAt = performance.now();
+      // Stop animation loop and switch to paused state
+      loopOff();
+      setState(State.PAUSED);
+      // Update display
+      renderRows();
+      updateStats();
+      ensureLiveRow();
+      updateUndoButton();
+      scrollToBottom();
+    }
+
+    function pauseResume(){
+      if(state === State.RUNNING){
+        pausedAt = performance.now();
+        setState(State.PAUSED);
+        loopOff();
+      } else if(state === State.PAUSED){
+        const now = performance.now();
+        const delta = now - pausedAt;
+        pausedAccumLap += delta;
+        pausedAccumSession += delta;
+        pausedAt = 0;
+        setState(State.RUNNING);
+        loopOn();
+      }
+    }
+
+    function stopSession(){
+      loopOff();
+      undoStack.length = 0;
+      setState(State.STOPPED);
+    }
+
+    function resetAll(){
+      loopOff();
+      setState(State.IDLE);
+      sessionStart = currentLapStart = pausedAt = 0;
+      pausedAccumLap = pausedAccumSession = 0;
+      rows.length = 0; undoStack.length = 0;
+      renderRows(); updateStats();
+      currentDisplay.textContent = '00:00.0';
+      sessionDisplay.textContent = '00:00.0';
+      scrollToBottom();
+    }
+
+    function loopOn(){
+      if(rafId) cancelAnimationFrame(rafId);
+      const tick = ()=>{
+        if(state === State.RUNNING){
+          const now = performance.now();
+          const lapMs = now - currentLapStart - pausedAccumLap;
+          const sessMs = now - sessionStart - pausedAccumSession;
+          currentDisplay.textContent = formatDuration(lapMs);
+          sessionDisplay.textContent = formatHMS(sessMs);
+          updateLiveRow(lapMs);
+          scrollToBottom();
+        } else if(state === State.PAUSED){
+          updateLiveRow(performance.now() - currentLapStart - pausedAccumLap); // freeze-ish
+          scrollToBottom();
+        }
+        rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+    }
+    function loopOff(){ if(rafId){ cancelAnimationFrame(rafId); rafId = null; } }
+
+    function updateStats(){
+      const total = rows.reduce((a,r)=>a+r.ms,0);
+      const avg = rows.length ? total / rows.length : 0;
+      rowsCount.textContent = rows.length;
+      avgDisplay.textContent = rows.length ? formatDuration(avg) : '00:00.0';
+      totalDisplay.textContent = rows.length ? formatHMS(total) : '00:00.0';
+    }
+
+    function renderRows(){
+      logBody.innerHTML = '';
+      for(const r of rows){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="nowrap">${r.index}</td>
+          <td class="nowrap">${formatDuration(r.ms)}</td>
+          <td>${(r.ms/1000).toFixed(1)}</td>
+          <td class="nowrap">${r.completedAt}</td>`;
+        logBody.appendChild(tr);
+      }
+      ensureLiveRow();
+    }
+
+    function ensureLiveRow(){
+      if(state === State.RUNNING || state === State.PAUSED){
+        if(!liveRowEl){
+          liveRowEl = document.createElement('tr');
+          liveRowEl.id = 'liveRow';
+          logBody.appendChild(liveRowEl);
+        } else if(liveRowEl.parentElement !== logBody){
+          logBody.appendChild(liveRowEl);
+        }
+        updateLiveRow(performance.now() - currentLapStart - pausedAccumLap);
+      } else {
+        if(liveRowEl && liveRowEl.parentElement){ liveRowEl.parentElement.removeChild(liveRowEl); }
+        liveRowEl = null;
+      }
+    }
+
+    function updateLiveRow(lapMs){
+      if(!liveRowEl) return;
+      const status = (state === State.PAUSED) ? 'Paused' : 'In Progress';
+      const idx = rows.length + 1;
+      liveRowEl.innerHTML = `
+        <td class="nowrap">${idx} (current)</td>
+        <td class="nowrap">${formatDuration(lapMs)}</td>
+        <td>${(lapMs/1000).toFixed(1)}</td>
+        <td class="nowrap">${status}</td>`;
+    }
+
+    function scrollToBottom(){
+      tableWrap.scrollTop = tableWrap.scrollHeight;
+    }
+
+    // ===== CSV builders (pure functions for testability) =====
+    function buildUserCsv(nameVal, rows){
+      const headers = ['user','row_index','row_duration_ms','row_duration_seconds','row_duration_hms','completed_at'];
+      const lines = [headers.join(',')];
+      for(const r of rows){
+        const rec = [
+          JSON.stringify(csvSafe(nameVal || '')),
+          r.index,
+          Math.round(r.ms),
+          (r.ms/1000).toFixed(3),
+          formatHMS(r.ms),
+          JSON.stringify(csvSafe(r.completedAt))
+        ];
+        lines.push(rec.join(','));
+      }
+      const total = rows.reduce((a,r)=>a+r.ms,0);
+      const avg = rows.length ? total/rows.length : 0;
+      lines.push('');
+      lines.push(`# total_rows,${rows.length}`);
+      lines.push(`# total_time_ms,${Math.round(total)}`);
+      lines.push(`# total_time_hms,${formatHMS(total)}`);
+      lines.push(`# average_row_ms,${Math.round(avg)}`);
+      lines.push(`# average_row_mmss,${formatDuration(avg)}`);
+      return lines.join('\n');
+    }
+
+    function buildSessionCsv(nameVal, rows){
+      const total = rows.reduce((a,r)=>a+r.ms,0);
+      const avg = rows.length ? total/rows.length : 0;
+      const headers = ['user','total_rows','total_time_ms','total_time_hms','average_row_ms','average_row_mmss'];
+      const values  = [
+        JSON.stringify(csvSafe(nameVal || '')),
+        rows.length,
+        Math.round(total),
+        formatHMS(total),
+        Math.round(avg),
+        formatDuration(avg)
+      ];
+      return headers.join(',') + '\n' + values.join(',') + '\n';
+    }
+
+    function exportCSVUser(){
+      const nameVal = (userNameInput.value || '').trim();
+      const csv = buildUserCsv(nameVal, rows);
+      const blob = new Blob([csv], {type:'text/csv'});
+      const d = new Date();
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      const fileBase = `${safeFilePart(nameVal)} ${mm}-${dd}-${yyyy}`.trim();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${fileBase}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    function exportCSVSession(){
+      const nameVal = (userNameInput.value || '').trim();
+      const csv = buildSessionCsv(nameVal, rows);
+      const blob = new Blob([csv], {type:'text/csv'});
+      const d = new Date();
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      const fileBase = `${safeFilePart(nameVal)} Session ${mm}-${dd}-${yyyy}`.trim();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${fileBase}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+
+    // ===== Wire up =====
+    startBtn.addEventListener('click', startSession);
+    logBtn.addEventListener('click', logRow);
+    undoBtn.addEventListener('click', undoLog);
+    pauseBtn.addEventListener('click', pauseResume);
+    stopBtn.addEventListener('click', stopSession);
+    resetBtn.addEventListener('click', resetAll);
+    exportUserBtn.addEventListener('click', exportCSVUser);
+    exportSessionBtn.addEventListener('click', exportCSVSession);
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', (e)=>{
+      if(e.target && ['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      const k = e.key.toLowerCase();
+      if(k==='s' && !startBtn.disabled){ startSession(); }
+      else if(k==='l' && !logBtn.disabled){ logRow(); }
+      else if(k==='u' && !undoBtn.disabled){ undoLog(); }
+      else if(k==='p' && !pauseBtn.disabled){ pauseResume(); }
+      else if(k==='t' && !stopBtn.disabled){ stopSession(); }
+    });
+
+    // Warn if navigating away while active
+    window.addEventListener('beforeunload', (e)=>{
+      if(state===State.RUNNING || state===State.PAUSED){ e.preventDefault(); e.returnValue=''; }
+    });
+
+    // ===== Minimal self-tests (console only) =====
+    const DEBUG_SELF_TESTS = false;
+    (function runSelfTests(){
+      if(!DEBUG_SELF_TESTS) return;
+      function assertEq(name, a, b){ if(a!==b){ console.error('[TEST FAIL]', name, 'expected:', b, 'got:', a);} else { console.log('[TEST PASS]', name);} }
+      // Timing format tests
+      assertEq('formatDuration(0)', formatDuration(0), '00:00.0');
+      assertEq('formatHMS(0)', formatHMS(0), '00:00:00');
+      assertEq('formatDuration(9010)', formatDuration(9010), '00:09.0');
+      assertEq('formatHMS(9010)', formatHMS(9010), '00:00:09');
+      // CSV builders
+      const sampleRows = [
+        {index:1, ms:1500, completedAt:'2025-09-18 12:00:00'},
+        {index:2, ms:2500, completedAt:'2025-09-18 12:01:00'},
+      ];
+      const uCsv = buildUserCsv('Tester', sampleRows);
+      assertEq('User CSV starts with header', uCsv.split('\n')[0], 'user,row_index,row_duration_ms,row_duration_seconds,row_duration_hms,completed_at');
+      const sCsv = buildSessionCsv('Tester', sampleRows);
+      assertEq('Session CSV header', sCsv.split('\n')[0], 'user,total_rows,total_time_ms,total_time_hms,average_row_ms,average_row_mmss');
+      // Newline correctness (no unexpected tokens): ensure we used \n not raw injected newlines in code literals
+      assertEq('User CSV contains at least 3 lines', uCsv.split('\n').length >= 3, true);
+      assertEq('Session CSV contains 2 lines + trailing', sCsv.split('\n').length >= 2, true);
+    })();
+  </script>
+
+
+</body></html>

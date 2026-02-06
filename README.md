@@ -205,16 +205,4 @@ If you encounter any issues or have questions:
 
 ---
 
-## 🗺️ Roadmap
-
-Potential future enhancements:
-- [ ] Multi-session history
-- [ ] Task categorization/tagging
-- [ ] Visual charts and graphs
-- [ ] Cloud sync capabilities
-- [ ] Mobile app version
-- [ ] Export to additional formats (JSON, Excel)
-
----
-
 **Made with ❤️ for productivity enthusiasts**

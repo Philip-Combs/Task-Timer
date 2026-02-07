@@ -1,0 +1,38 @@
+# OS Files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Node.js (if using for any build tools)
+node_modules/
+npm-debug.log
+yarn.lock
+package-lock.json
+
+# Python (if using for any scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+
+# Build artifacts
+dist/
+build/
+*.min.js
+*.min.css
+
+# Environment files
+.env
+.env.local
+
+# OS-specific
+.AppleDouble
+.LSOverride
